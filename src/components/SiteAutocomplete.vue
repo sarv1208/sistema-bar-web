@@ -1,0 +1,210 @@
+<template>
+    <form class="site-autocomplete" novalidate @keyup.esc="close">
+        <div class="dialog-title">{{ $t("search.title") }}</div>
+        <OverlayLoader v-if="isLoading"></OverlayLoader>
+        <ais-instant-search v-if="searchClient" :search-client="searchClient" index-name="cocktails" :future="{ preserveSharedStateOnUnmount: true }">
+            <ais-configure :hits-per-page.camel="5" :restrict-searchable-attributes.camel="['name']" />
+            <ais-search-box autofocus>
+                <template #default="{ currentRefinement, refine }">
+                    {{ doFocus() }}
+                    <input
+                        ref="siteSearchInput"
+                        class="form-input"
+                        type="search"
+                        :placeholder="$t('placeholder.site-search')"
+                        :value="currentRefinement"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        maxlength="512"
+                        @input="refine(($event.currentTarget as HTMLInputElement).value)"
+                    />
+                </template>
+            </ais-search-box>
+            <ais-index index-name="cocktails">
+                <ais-hits>
+                    <template #default="{ items }: { items: Hit[] }">
+                        <h4 class="site-autocomplete__index-name">&mdash; {{ $t("cocktail.cocktails") }} ({{ items.length }})</h4>
+                        <ul v-show="items.length > 0" class="site-autocomplete__results block-container block-container--inset">
+                            <li v-for="hit in items" :key="hit.slug">
+                                <RouterLink class="block-container block-container--hover" :to="{ name: 'cocktails.show', params: { id: hit.slug } }" @click="close">
+                                    <div class="site-autocomplete__results__image" :style="{ 'background-image': 'url(' + getImageUrl(hit, 'cocktail') + ')' }"></div>
+                                    <div class="site-autocomplete__results__content">
+                                        <ais-highlight attribute="name" :hit="hit" />
+                                        <small>{{ hit.short_ingredients?.join(", ") }}</small>
+                                    </div>
+                                </RouterLink>
+                            </li>
+                        </ul>
+                        <div v-show="items.length <= 0" class="block-container block-container--padded block-container--inset">
+                            {{ $t("cocktails-not-found") }}
+                        </div>
+                    </template>
+                </ais-hits>
+            </ais-index>
+            <ais-index index-name="ingredients">
+                <ais-hits>
+                    <template #default="{ items }: { items: Hit[] }">
+                        <h4 class="site-autocomplete__index-name">&mdash; {{ $t("ingredient.ingredients") }} ({{ items.length }})</h4>
+                        <ul v-show="items.length > 0" class="site-autocomplete__results block-container block-container--inset">
+                            <li v-for="hit in items" :key="hit.slug">
+                                <RouterLink class="block-container block-container--hover" :to="{ name: 'ingredients.show', params: { id: hit.slug } }" @click="close">
+                                    <div class="site-autocomplete__results__image" :style="{ 'background-image': 'url(' + getImageUrl(hit, 'ingredient') + ')' }"></div>
+                                    <div class="site-autocomplete__results__content">
+                                        <ais-highlight attribute="name" :hit="hit" />
+                                        <small>{{ hit.category }}</small>
+                                    </div>
+                                </RouterLink>
+                            </li>
+                        </ul>
+                        <div v-show="items.length <= 0" class="block-container block-container--padded block-container--inset">
+                            {{ $t("ingredients-not-found") }}
+                        </div>
+                    </template>
+                </ais-hits>
+            </ais-index>
+        </ais-instant-search>
+        <footer class="site-autocomplete__footer block-container block-container--inset"><span>Esc</span> to close, <span>CTRL+K</span> to toggle</footer>
+    </form>
+</template>
+
+<script setup lang="ts">
+import { ref, nextTick } from "vue";
+import { useI18n } from "vue-i18n";
+import { instantMeiliSearch } from "@meilisearch/instant-meilisearch";
+import BarAssistantClient from "@/api/BarAssistantClient";
+import OverlayLoader from "@/components/OverlayLoader.vue";
+import AppState from "@/AppState";
+import { useSaltRimToast } from "@/composables/toast";
+
+type Hit = {
+    slug: string;
+    image_url?: string;
+    short_ingredients?: string[];
+    category?: string;
+    name?: string;
+};
+
+type SearchClient = ReturnType<typeof instantMeiliSearch>["searchClient"];
+
+const { t } = useI18n();
+const toast = useSaltRimToast();
+
+const emit = defineEmits<{ closeAutocomplete: [] }>();
+
+const searchClient = ref<SearchClient | null>(null);
+const isLoading = ref(false);
+const siteSearchInput = ref<HTMLInputElement>();
+
+const appState = new AppState();
+
+isLoading.value = true;
+BarAssistantClient.getBar(appState.bar.id)
+    .then((resp) => {
+        isLoading.value = false;
+        searchClient.value = instantMeiliSearch(appState.bar.search_host ?? "", resp.data?.search_token ?? "").searchClient;
+    })
+    .catch((e) => {
+        isLoading.value = false;
+        toast.error(e.message);
+    });
+
+function close() {
+    emit("closeAutocomplete");
+}
+
+function getImageUrl(hit: Hit, type: "cocktail" | "ingredient") {
+    if (!hit.image_url) {
+        if (type == "cocktail") {
+            return "/no-cocktail.jpg";
+        }
+
+        return "/no-ingredient.png";
+    }
+
+    return hit.image_url;
+}
+
+function doFocus() {
+    nextTick(() => {
+        if (siteSearchInput.value) {
+            siteSearchInput.value.focus();
+        }
+    });
+}
+</script>
+
+<style scoped>
+.site-autocomplete .form-input {
+    width: 100%;
+}
+
+.site-autocomplete__results {
+    list-style: none;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-size-1);
+    padding: var(--gap-size-1);
+}
+
+.site-autocomplete__results li a {
+    display: flex;
+    width: 100%;
+    padding: 0.5rem;
+    text-decoration: none;
+}
+
+.site-autocomplete__results li a .site-autocomplete__results__image {
+    width: 50px;
+    height: 50px;
+    border-radius: var(--radius-2);
+    background-color: var(--clr-gray-100);
+    background-position: center center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+}
+
+.site-autocomplete__results__content span {
+    font-weight: var(--fw-bold);
+    font-size: 1.25em;
+    font-family: var(--font-heading);
+    line-height: 1.2;
+}
+
+:deep(.site-autocomplete__results__content span mark) {
+    font-weight: var(--fw-bold);
+}
+
+.site-autocomplete__results__content small {
+    display: block;
+}
+
+.site-autocomplete__footer {
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-1);
+    font-size: 0.85rem;
+    margin-top: var(--gap-size-2);
+}
+
+.site-autocomplete__footer span {
+    border-radius: var(--radius-1);
+    font-size: 0.75rem;
+    border: 1px solid var(--clr-gray-400);
+    font-weight: bold;
+    background-color: none;
+    padding: 1px 4px;
+}
+
+.site-autocomplete__index-name {
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: var(--fw-bold);
+    color: var(--clr-gray-500);
+    margin: 0.5rem 0;
+}
+</style>

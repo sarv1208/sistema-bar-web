@@ -1,0 +1,24 @@
+.sr-grid {
+    display: grid;
+    gap: var(--gap-size-2);
+}
+
+.sr-grid.sr-grid--2-col {
+    grid-template-columns: 1fr 1fr;
+}
+
+.sr-grid.sr-grid--3-col {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+@media (max-width: 350px) {
+    .sr-grid.sr-grid--2-col {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 450px) {
+    .sr-grid.sr-grid--3-col {
+        grid-template-columns: 1fr;
+    }
+}

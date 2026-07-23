@@ -1,0 +1,54 @@
+.item-details__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap-size-2);
+    margin-bottom: 1rem;
+}
+
+.item-details__chips__group__title {
+    font-size: 0.65rem;
+    margin-bottom: -2px;
+    color: var(--clr-gray-600);
+}
+
+.dark-theme .item-details__chips__group__title {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.item-details__chips .rating {
+    line-height: 1;
+}
+
+.chips-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap-size-2);
+}
+
+.chip {
+    display: block;
+    padding: 1px 9px;
+    font-size: 0.75rem;
+    background-color: var(--clr-accent-100);
+    color: var(--clr-accent-700);
+    border-radius: var(--radius-1);
+    text-decoration: none;
+
+    .dark-theme & {
+        background-color: var(--clr-accent-800);
+        color: var(--clr-accent-300);
+    }
+}
+
+.chip.chip--alternate {
+    background-color: var(--clr-purple-100);
+    color: var(--clr-purple-700);
+
+    .dark-theme & {
+        background-color: var(--clr-purple-700);
+        color: var(--clr-purple-300);
+    }
+}

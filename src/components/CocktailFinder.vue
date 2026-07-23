@@ -1,0 +1,133 @@
+<template>
+    <div ref="rootEl">
+        <div class="dialog-title">{{ $t("cocktail.cocktails") }}</div>
+        <ais-instant-search :search-client="searchClient" index-name="cocktails" class="cocktail-finder" :future="{ preserveSharedStateOnUnmount: true }">
+            <ais-configure :hits-per-page.camel="8" />
+            <ais-search-box>
+                <template #default="{ refine }">
+                    {{ doFocus() }}
+                    <input
+                        ref="search"
+                        class="form-input cocktail-finder__search-input"
+                        type="search"
+                        :placeholder="$t('placeholder.search-cocktails')"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        maxlength="512"
+                        @input="refine(($event.currentTarget as HTMLInputElement).value)"
+                    />
+                </template>
+            </ais-search-box>
+            <ais-hits class="cocktail-finder__hits">
+                <template #default="{ items }: { items: Hit[] }">
+                    <a
+                        v-for="item in items"
+                        :key="item.id"
+                        class="cocktail-finder__option block-container block-container--hover"
+                        href="#"
+                        @click.prevent="emit('cocktailSelected', item)"
+                    >
+                        <CocktailThumb :cocktail="item"></CocktailThumb>
+                        <div>
+                            <h4 class="sr-list-item-title">{{ item.name }}</h4>
+                            <p>{{ item.short_ingredients?.join(", ") }}</p>
+                        </div>
+                    </a>
+                </template>
+            </ais-hits>
+        </ais-instant-search>
+        <div class="dialog-actions">
+            <button type="submit" class="button button--dark" @click="emit('closed')">{{ $t("close") }}</button>
+        </div>
+    </div>
+</template>
+
+<script setup lang="ts">
+import { ref, nextTick } from "vue";
+import { instantMeiliSearch } from "@meilisearch/instant-meilisearch";
+import AppState from "@/AppState";
+import CocktailThumb from "@/components/Cocktail/CocktailThumb.vue";
+
+type Hit = {
+    id: number;
+    name: string;
+    slug: string;
+    short_ingredients?: string[];
+    image_url?: string;
+};
+
+const appState = new AppState();
+
+const emit = defineEmits<{ cocktailSelected: [item: Hit]; closed: [] }>();
+
+const searchClient = instantMeiliSearch(appState.bar.search_host ?? "", appState.bar.search_token ?? "").searchClient;
+const search = ref<HTMLInputElement>();
+const rootEl = ref<HTMLElement>();
+
+function doFocus() {
+    nextTick(() => {
+        if (search.value) {
+            rootEl.value?.scrollIntoView(true);
+            search.value.focus();
+        }
+    });
+}
+</script>
+
+<style scoped>
+.cocktail-finder__search-input {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+.cocktail-finder__hits {
+    padding: var(--gap-size-1);
+    background-color: var(--clr-gray-100);
+    border-radius: var(--radius-2);
+    border-bottom: 1px solid #fff;
+    box-shadow:
+        inset 0px 0.4px 0.5px hsl(var(--shadow-color) / 0.25),
+        inset 0px 1.1px 1.2px -0.8px hsl(var(--shadow-color) / 0.25),
+        inset 0px 2.6px 2.9px -1.7px hsl(var(--shadow-color) / 0.25),
+        inset 0px 6.3px 7.1px -2.5px hsl(var(--shadow-color) / 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-size-1);
+    height: 400px;
+    overflow-x: auto;
+}
+
+.dark-theme .cocktail-finder__hits {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+        inset 0px 0.4px 0.5px hsl(var(--shadow-color-dark) / 0.25),
+        inset 0px 1.1px 1.2px -0.8px hsl(var(--shadow-color-dark) / 0.25),
+        inset 0px 2.6px 2.9px -1.7px hsl(var(--shadow-color-dark) / 0.25),
+        inset 0px 6.3px 7.1px -2.5px hsl(var(--shadow-color-dark) / 0.25);
+}
+
+.cocktail-finder__option {
+    display: flex;
+    flex-direction: row;
+    gap: var(--gap-size-2);
+    text-decoration: none;
+    padding: var(--gap-size-2);
+}
+
+:deep(.cocktail-finder__option h4 span .ais-Highlight-highlighted) {
+    background-color: var(--clr-accent-200);
+    font-weight: var(--fw-bold);
+}
+
+.cocktail-finder__option p {
+    font-size: 0.85em;
+    line-height: 1.6;
+    color: var(--clr-gray-600);
+}
+
+.dark-theme .cocktail-finder__option p {
+    color: var(--clr-gray-400);
+}
+</style>

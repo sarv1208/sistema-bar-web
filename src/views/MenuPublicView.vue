@@ -1,0 +1,7 @@
+<script setup lang="ts">
+import MenuPublicIndex from "../components/Menu/MenuPublicIndex.vue";
+</script>
+
+<template>
+    <MenuPublicIndex />
+</template>

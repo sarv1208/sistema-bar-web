@@ -1,0 +1,99 @@
+<template>
+    <Teleport to="body">
+        <Transition name="dialog-animation">
+            <div v-if="shown" class="dialog" style="z-index: 6">
+                <div class="dialog__overlay"></div>
+                <div class="dialog__container">
+                    <div class="dialog__content">
+                        <div class="dialog-confirm">
+                            <h6 class="dialog-confirm__title">{{ $t("confirm-dialog.title") }}</h6>
+                            <p class="dialog-confirm__message">{{ body }}</p>
+                            <div class="dialog-confirm__actions">
+                                <button class="button button--outline" @click.prevent="cancel">{{ $t("cancel") }}</button>
+                                <button class="button button--dark" @click.prevent="confirm">{{ $t("confirm") }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+    </Teleport>
+</template>
+
+<script setup lang="ts">
+import { ref, watch, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
+import { dialogBus } from "@/composables/eventBus";
+
+type ConfirmPayload = {
+    body: string;
+    onResolved?: (dialog: { close: () => void }) => void;
+};
+
+const { t } = useI18n();
+const shown = ref(false);
+const body = ref("");
+const resolve = ref<((dialog: { close: () => void }) => void) | null>(null);
+
+watch(shown, (val) => {
+    if (val) {
+        document.body.style.overflow = "hidden";
+    } else {
+        document.body.style.overflow = "auto";
+    }
+});
+
+onMounted(() => {
+    dialogBus.on((e, payload) => {
+        if (e === "requestConfirm") {
+            show(payload as ConfirmPayload);
+        }
+    });
+});
+
+function show(payload: ConfirmPayload) {
+    body.value = payload.body;
+    resolve.value = payload.onResolved ?? null;
+    shown.value = true;
+}
+
+function close() {
+    shown.value = false;
+}
+
+function confirm() {
+    resolve.value?.({ close });
+}
+
+function cancel() {
+    close();
+}
+</script>
+
+<style scoped>
+.dialog-confirm__title {
+    font-size: 1.5rem;
+    margin-bottom: 0.3rem;
+    font-weight: var(--fw-bold);
+}
+
+.dialog-confirm__message {
+    font-size: 1rem;
+    color: var(--clr-gray-700);
+}
+
+.dialog-confirm__actions {
+    display: flex;
+    gap: var(--gap-size-2);
+    justify-content: end;
+    margin-top: 1rem;
+}
+
+.dark-theme .dialog-confirm__title {
+    color: var(--clr-gray-100);
+}
+
+.dark-theme .dialog-confirm__message {
+    color: var(--clr-gray-300);
+}
+</style>
